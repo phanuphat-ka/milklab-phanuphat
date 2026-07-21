@@ -9,6 +9,19 @@ Template repo สำหรับวิชา 31-407-106-406 : AI for Solopreneur
 3. ตั้ง user-level Codespaces secret `GOOGLE_API_KEY` (ดู Quickstart)
 4. รัน `python scripts/verify_setup.py` ใน terminal
 
+## Environment
+
+คัดลอก [`.env.example`](.env.example) ไปเป็น `.env` แล้วใส่ค่าจริงของตัวเอง โดยชื่อที่ใช้กับ S2 คือ `TELEGRAM_BOT_TOKEN` และ `TELEGRAM_CHAT_ID`
+
+สำหรับ S2 Google Sheets ให้ใส่ `GOOGLE_SHEETS_CREDENTIALS` เป็น service account JSON แบบบรรทัดเดียว และ `GOOGLE_SHEETS_URL` เป็น URL หรือ ID ของชีตเป้าหมาย
+
+ตัวอย่างทดสอบ Telegram:
+
+```bash
+curl -X POST "https://api.telegram.org/bot$TELEGRAM_BOT_TOKEN/sendMessage" \
+	-d "chat_id=$TELEGRAM_CHAT_ID&text=hello"
+```
+
 ## ไฟล์หลัก
 
 | ไฟล์ | Session | คำอธิบาย |
