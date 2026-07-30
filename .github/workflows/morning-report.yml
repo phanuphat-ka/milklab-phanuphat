@@ -16,7 +16,7 @@ jobs:
       - name: Run morning report
 
         env:
-          TELEGRAM_BOT_TOKEN: ${{8901830717:AAGUcfPQ4cSmUGVbbOH9_vzK2gY5bNr99pg}}
-          TELEGRAM_CHAT_ID:   ${{6986907246}}
-          GOOGLE_SHEETS_ID:   ${{https://docs.google.com/spreadsheets/d/13FAjNsLgNrXqfsgfKb5zUP5o-gy068R35EhMvhQ_A8c/edit?usp=sharing}}
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_CHAT_ID:   ${{ secrets.TELEGRAM_CHAT_ID }}
+          GOOGLE_SHEETS_ID:   ${{ secrets.GOOGLE_SHEETS_ID }}
         run: python morning_report.py
