@@ -1,7 +1,3 @@
-from agent_tools import TOOL_REGISTRY
-from google import genai
-from google.genai import types
-from dotenv import load_dotenv
 import os
 import sys
 import json
@@ -15,6 +11,12 @@ if scripts_dir not in sys.path:
     sys.path.append(scripts_dir)
 if repo_root not in sys.path:
     sys.path.append(repo_root)
+
+
+from dotenv import load_dotenv
+from google import genai
+from google.genai import types
+from agent_tools import TOOL_REGISTRY
 
 
 load_dotenv()
@@ -71,6 +73,12 @@ SYSTEM_PROMPT = """
 5. (Safety) ห้ามรันคำสั่งที่เป็นอันตรายต่อระบบ
 """
 
+MODEL_CANDIDATES = (
+    os.environ.get("GEMINI_MODEL", "").strip(),
+    "gemini-2.5-flash",
+    "gemini-3.5-flash",
+)
+
 
 def log_trace(role: str, content: str):
     """บันทึกประวัติลงไฟล์ agent_trace.log"""
@@ -117,6 +125,41 @@ def dispatch_tool(tool_name: str, tool_args: dict):
     return f"Error: Tool '{tool_name}' not found."
 
 
+def _generate_content_with_fallback(
+    client: genai.Client,
+    user_cmd: str,
+    tool_config: types.Tool,
+):
+    last_error: Exception | None = None
+    tried_models: list[str] = []
+
+    for model_name in MODEL_CANDIDATES:
+        if not model_name or model_name in tried_models:
+            continue
+
+        tried_models.append(model_name)
+        try:
+            return client.models.generate_content(
+                model=model_name,
+                contents=user_cmd,
+                config=types.GenerateContentConfig(
+                    system_instruction=SYSTEM_PROMPT,
+                    tools=[tool_config],
+                    temperature=0.0,
+                ),
+            )
+        except Exception as exc:
+            last_error = exc
+            error_text = str(exc)
+            if "503" not in error_text and "UNAVAILABLE" not in error_text:
+                raise
+
+    if last_error is not None:
+        raise last_error
+
+    raise RuntimeError("No Gemini model configured")
+
+
 def run_agent(user_cmd: str) -> str:
     if not os.environ.get("GEMINI_API_KEY"):
         return "⚠️ ขัดข้อง: ไม่พบ GEMINI_API_KEY ในระบบ"
@@ -127,15 +170,7 @@ def run_agent(user_cmd: str) -> str:
     tool_config = types.Tool(function_declarations=TOOL_SCHEMA)
 
     try:
-        response = client.models.generate_content(
-            model='gemini-3.5-flash',
-            contents=user_cmd,
-            config=types.GenerateContentConfig(
-                system_instruction=SYSTEM_PROMPT,
-                tools=[tool_config],
-                temperature=0.0
-            )
-        )
+        response = _generate_content_with_fallback(client, user_cmd, tool_config)
 
         if response.function_calls:
             final_result = ""
