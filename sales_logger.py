@@ -14,11 +14,14 @@ import argparse
 import json
 import os
 import sys
-from datetime import datetime
+from datetime import datetime, timezone, timedelta
 
 import gspread
 import requests
 from dotenv import load_dotenv
+
+
+THAILAND_TZ = timezone(timedelta(hours=7))
 
 
 def append_to_sheet(menu: str, qty: int, price: float) -> dict:
@@ -46,7 +49,7 @@ def append_to_sheet(menu: str, qty: int, price: float) -> dict:
         "http") else client.open_by_key(sheet_target)
 
     worksheet = spreadsheet.sheet1
-    timestamp = datetime.now().isoformat(timespec="seconds")
+    timestamp = datetime.now(THAILAND_TZ).strftime("%Y-%m-%d %H:%M:%S")
     total = qty * price
     row = [timestamp, menu, qty, price, total]
     worksheet.append_row(row, value_input_option="USER_ENTERED")
@@ -57,6 +60,11 @@ def append_to_sheet(menu: str, qty: int, price: float) -> dict:
         "price": price,
         "total": total,
     }
+
+
+def log_to_sheet(menu: str, qty: int, price: float) -> dict:
+    """Compatibility wrapper for older callers."""
+    return append_to_sheet(menu, qty, price)
 
 
 def send_notification(message: str) -> str:
