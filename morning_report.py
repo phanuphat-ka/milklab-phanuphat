@@ -87,30 +87,34 @@ def _parse_sales_date(value: Any) -> date | None:
     return None
 
 
-def load_today_sales() -> list[list[Any]]:
+def load_sales_for_date(target_date: date) -> list[list[Any]]:
     worksheet = _open_worksheet()
     rows = worksheet.get_all_values()
     if not rows:
         return []
 
-    today = datetime.now(THAILAND_TZ).date()
     result: list[list[Any]] = []
     for row in rows[1:]:
         if not row:
             continue
         row_date = _parse_sales_date(row[0])
-        if row_date == today:
+        if row_date == target_date:
             result.append(row)
     return result
 
 
-def build_report(rows: list[list[Any]]) -> str:
+def load_today_sales() -> list[list[Any]]:
+    today = datetime.now(THAILAND_TZ).date()
+    return load_sales_for_date(today)
+
+
+def build_report(rows: list[list[Any]], label: str = "วันนี้") -> str:
     if not rows:
-        return "[Morning report] ไม่มีรายการขายของวันนี้"
+        return f"[Morning report] ไม่มีรายการขายของ{label}"
 
     total_qty = 0
     total_amount = 0.0
-    lines = ["[Morning report] สรุปยอดขายวันนี้"]
+    lines = [f"[Morning report] สรุปยอดขาย{label}"]
 
     for row in rows:
         timestamp = row[0] if len(row) > 0 else ""

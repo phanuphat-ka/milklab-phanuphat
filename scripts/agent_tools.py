@@ -1,3 +1,6 @@
+from datetime import date as Date
+
+from morning_report import build_report, load_sales_for_date
 from sales_logger import append_to_sheet
 import os
 import sys
@@ -20,7 +23,13 @@ def log_sale(menu: str, qty: int, price: float) -> str:
 
 def query_sales(date: str) -> str:
     """สอบถามยอดขายของวันที่ระบุ (YYYY-MM-DD)"""
-    return f"ยอดขายของวันที่ {date} คือ นมหมี 5 ขวด และ ชาเขียว 3 แก้ว"
+    try:
+        target_date = Date.fromisoformat(date)
+    except ValueError as exc:
+        raise RuntimeError("date must be in YYYY-MM-DD format") from exc
+
+    rows = load_sales_for_date(target_date)
+    return build_report(rows, label=f"วันที่ {target_date.isoformat()}")
 
 
 def send_alert(message: str) -> str:
