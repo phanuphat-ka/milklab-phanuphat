@@ -11,7 +11,7 @@ Template repo สำหรับวิชา 31-407-106-406 : AI for Solopreneur
 
 ## Environment
 
-คัดลอก [`.env.example`](.env.example) ไปเป็น `.env` แล้วใส่ค่าจริงของตัวเอง โดยชื่อที่ใช้กับ S2 คือ `TELEGRAM_BOT_TOKEN` และ `TELEGRAM_CHAT_ID`
+คัดลอก [`.env.example`](.env.example) ไปเป็น `.env` แล้วใส่ค่าจริงของตัวเอง โดยชื่อที่ใช้กับ S2 คือ `TELEGRAM_BOT_TOKEN` และ `TELEGRAM_CHAT_ID` (ถ้าไฟล์เดิมใช้ `TELEGRAM_TOKEN` สคริปต์ morning report ยังรองรับเป็น alias)
 
 สำหรับ S2 Google Sheets ให้ใส่ `GOOGLE_SHEETS_CREDENTIALS` เป็น service account JSON แบบบรรทัดเดียว และ `GOOGLE_SHEETS_URL` เป็น URL หรือ ID ของชีตเป้าหมาย
 
