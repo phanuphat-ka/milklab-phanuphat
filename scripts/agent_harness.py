@@ -1,10 +1,10 @@
-from agent_tools import TOOL_REGISTRY
+from dotenv import load_dotenv
 from google.genai import types
 from google import genai
-from dotenv import load_dotenv
 import os
 import sys
 import json
+import re
 import argparse
 import requests
 from datetime import datetime, timezone, timedelta
@@ -15,6 +15,12 @@ if scripts_dir not in sys.path:
     sys.path.append(scripts_dir)
 if repo_root not in sys.path:
     sys.path.append(repo_root)
+
+try:
+    from scripts.agent_tools import TOOL_REGISTRY
+except ModuleNotFoundError:
+    # Fallback for direct execution from the scripts/ folder.
+    from agent_tools import TOOL_REGISTRY
 
 
 load_dotenv()
@@ -89,7 +95,6 @@ SYSTEM_PROMPT = """
 
 MODEL_CANDIDATES = (
     os.environ.get("GEMINI_MODEL", "").strip(),
-    "gemini-2.5-flash",
     "gemini-3.5-flash",
 )
 
@@ -139,6 +144,46 @@ def dispatch_tool(tool_name: str, tool_args: dict):
     return f"Error: Tool '{tool_name}' not found."
 
 
+def _try_direct_sale_logging(user_cmd: str) -> str | None:
+    sale_args = _parse_sale_command_fallback(user_cmd)
+    if not sale_args:
+        return None
+
+    observation = dispatch_tool("log_sale", sale_args)
+    log_trace("tool_result", f"direct_log_sale: {observation}")
+    return f"✅ {observation}"
+
+
+def _parse_sale_command_fallback(user_cmd: str) -> dict | None:
+    """Parse common Thai sale command formats into log_sale arguments."""
+    text = user_cmd.strip()
+    if not text:
+        return None
+
+    compact = re.sub(r"\s+", " ", text)
+    pattern = re.compile(
+        r"(?P<menu>.+?)\s+(?P<qty>\d+)\s*(?:แก้ว|ขวด|ชิ้น|ถุง|จาน|ไม้)\s*(?:.*?\s)?(?P<price>\d+(?:\.\d+)?)\s*บาท",
+        re.IGNORECASE,
+    )
+    match = pattern.search(compact)
+    if not match:
+        return None
+
+    menu = match.group("menu").strip()
+    menu = re.sub(
+        r"^(?:ช่วย)?(?:ใช้\s*tool\s*)?(?:บันทึกขาย|บันททึกขาย|บันทึก|บันททึก|ขาย)\s*",
+        "",
+        menu,
+        flags=re.IGNORECASE,
+    ).strip()
+    if not menu:
+        return None
+
+    qty = int(match.group("qty"))
+    price = float(match.group("price"))
+    return {"menu": menu, "qty": qty, "price": price}
+
+
 def _generate_content_with_fallback(
     client: genai.Client,
     user_cmd: str,
@@ -175,12 +220,18 @@ def _generate_content_with_fallback(
 
 
 def run_agent(user_cmd: str) -> str:
-    if not os.environ.get("GEMINI_API_KEY"):
-        return "⚠️ ขัดข้อง: ไม่พบ GEMINI_API_KEY ในระบบ"
+    api_key = os.environ.get(
+        "GEMINI_API_KEY") or os.environ.get("GOOGLE_API_KEY")
+    if not api_key:
+        return "⚠️ ขัดข้อง: ไม่พบ GEMINI_API_KEY หรือ GOOGLE_API_KEY ในระบบ"
 
     log_trace("user_input", user_cmd)
 
-    client = genai.Client(api_key=os.environ.get("GEMINI_API_KEY"))
+    direct_sale_result = _try_direct_sale_logging(user_cmd)
+    if direct_sale_result is not None:
+        return direct_sale_result
+
+    client = genai.Client(api_key=api_key)
     tool_config = types.Tool(function_declarations=TOOL_SCHEMA)
 
     try:
@@ -207,6 +258,14 @@ def run_agent(user_cmd: str) -> str:
             return response.text
 
     except Exception as e:
+        error_text = str(e)
+        if any(token in error_text for token in ("429", "503", "RESOURCE_EXHAUSTED", "UNAVAILABLE")):
+            parsed_args = _parse_sale_command_fallback(user_cmd)
+            if parsed_args:
+                observation = dispatch_tool("log_sale", parsed_args)
+                log_trace("tool_result", f"fallback_log_sale: {observation}")
+                return f"✅ {observation}\n(บันทึกผ่านโหมดสำรอง เนื่องจากบริการ AI ไม่พร้อมใช้งานชั่วคราว)"
+
         error_msg = f"❌ เกิดข้อผิดพลาดในการคิดวิเคราะห์: {str(e)}"
         log_trace("error", error_msg)
         return error_msg
