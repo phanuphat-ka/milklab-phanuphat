@@ -26,7 +26,7 @@ EMBEDDING_MODEL_NAME = os.environ.get(
     "RAG_EMBEDDING_MODEL",
     "gemini-embedding-2",
 )
-GEMINI_MODEL = os.environ.get("GEMINI_MODEL", "gemini-3.5-flash")
+GEMINI_MODEL = os.environ.get("GEMINI_MODEL", "gemini-3.6-flash")
 
 
 logger = logging.getLogger("milklab.rag")
