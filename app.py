@@ -18,14 +18,13 @@ from dotenv import load_dotenv
 from google import genai
 from google.genai import types
 from streamlit.runtime import exists as streamlit_runtime_exists
-from sentence_transformers import SentenceTransformer
 
 
 ROOT_DIR = Path(__file__).resolve().parent
 KB_PATH = ROOT_DIR / "menu_kb.md"
 EMBEDDING_MODEL_NAME = os.environ.get(
     "RAG_EMBEDDING_MODEL",
-    "paraphrase-multilingual-MiniLM-L12-v2",
+    "gemini-embedding-2",
 )
 GEMINI_MODEL = os.environ.get("GEMINI_MODEL", "gemini-2.5-flash")
 
@@ -80,11 +79,6 @@ def split_markdown_into_chunks(markdown_text: str) -> list[KBChunk]:
 
 
 @st.cache_resource(show_spinner=False)
-def load_embedding_model(model_name: str) -> SentenceTransformer:
-    return SentenceTransformer(model_name)
-
-
-@st.cache_resource(show_spinner=False)
 def build_vector_store(
     kb_path_str: str,
     kb_mtime: float,
@@ -93,18 +87,23 @@ def build_vector_store(
     del kb_mtime
     kb_text = Path(kb_path_str).read_text(encoding="utf-8")
     chunks = split_markdown_into_chunks(kb_text)
-    model = load_embedding_model(embedding_model_name)
     chunk_texts = [chunk.text for chunk in chunks]
 
     if not chunk_texts:
         raise ValueError("Knowledge base is empty")
 
-    embeddings = model.encode(
-        chunk_texts,
-        convert_to_numpy=True,
-        normalize_embeddings=True,
-        show_progress_bar=False,
-    ).astype(np.float32)
+    api_key = load_api_key()
+    if not api_key:
+        raise ValueError("API key is required for building vector store")
+    
+    client = genai.Client(api_key=api_key)
+    response = client.models.embed_content(
+        model=embedding_model_name,
+        contents=chunk_texts,
+    )
+    
+    embeddings_list = [emb.values for emb in response.embeddings]
+    embeddings = np.array(embeddings_list, dtype=np.float32)
 
     index = faiss.IndexFlatIP(embeddings.shape[1])
     index.add(embeddings)
@@ -112,7 +111,6 @@ def build_vector_store(
     return {
         "chunks": chunks,
         "index": index,
-        "model": model,
         "dimension": embeddings.shape[1],
     }
 
@@ -150,26 +148,26 @@ def retrieve_top_k(
     *,
     trace_id: str,
     resources: dict[str, object],
+    api_key: str,
+    embedding_model_name: str,
     top_k: int = 3,
 ) -> list[dict[str, object]]:
     with trace_span("retrieve_top_k", trace_id, top_k=top_k, query=query):
         chunks = resources["chunks"]
         index = resources["index"]
-        model = resources["model"]
 
         if not query.strip():
             return []
 
         assert isinstance(chunks, list)
         assert isinstance(index, faiss.Index)
-        assert isinstance(model, SentenceTransformer)
 
-        query_embedding = model.encode(
-            [query],
-            convert_to_numpy=True,
-            normalize_embeddings=True,
-            show_progress_bar=False,
-        ).astype(np.float32)
+        client = genai.Client(api_key=api_key)
+        response = client.models.embed_content(
+            model=embedding_model_name,
+            contents=[query],
+        )
+        query_embedding = np.array([response.embeddings[0].values], dtype=np.float32)
 
         limit = min(top_k, len(chunks))
         scores, indices = index.search(query_embedding, limit)
@@ -394,6 +392,8 @@ def main() -> int:
             user_query,
             trace_id=trace_id,
             resources=resources,
+            api_key=api_key,
+            embedding_model_name=EMBEDDING_MODEL_NAME,
             top_k=3,
         )
 
