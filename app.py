@@ -97,12 +97,14 @@ def build_vector_store(
         raise ValueError("API key is required for building vector store")
     
     client = genai.Client(api_key=api_key)
-    response = client.models.embed_content(
-        model=embedding_model_name,
-        contents=chunk_texts,
-    )
-    
-    embeddings_list = [emb.values for emb in response.embeddings]
+    embeddings_list = []
+    for text in chunk_texts:
+        response = client.models.embed_content(
+            model=embedding_model_name,
+            contents=text,
+        )
+        embeddings_list.append(response.embeddings[0].values)
+        
     embeddings = np.array(embeddings_list, dtype=np.float32)
 
     index = faiss.IndexFlatIP(embeddings.shape[1])
