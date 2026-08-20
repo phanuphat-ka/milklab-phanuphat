@@ -21,7 +21,7 @@ from streamlit.runtime import exists as streamlit_runtime_exists
 
 
 ROOT_DIR = Path(__file__).resolve().parent
-KB_PATH = ROOT_DIR / "menu_kb.md"
+KB_PATH = ROOT_DIR / "guitar_kb.md"
 EMBEDDING_MODEL_NAME = os.environ.get(
     "RAG_EMBEDDING_MODEL",
     "gemini-embedding-2",
@@ -51,7 +51,7 @@ def load_kb_text() -> str:
 
 def split_markdown_into_chunks(markdown_text: str) -> list[KBChunk]:
     chunks: list[KBChunk] = []
-    current_title = "MilkLab Knowledge Base"
+    current_title = "GuitarLab Knowledge Base"
     current_lines: list[str] = []
 
     def flush_chunk() -> None:
@@ -207,7 +207,7 @@ def build_prompt(query: str, retrieved_chunks: Iterable[dict[str, object]]) -> s
         sources) if sources else "ไม่มีข้อมูลที่เกี่ยวข้อง"
 
     return f"""
-คุณคือผู้ช่วยของ MilkLab° สำหรับตอบคำถามจากคลังความรู้ภายในร้านเท่านั้น
+คุณคือผู้ช่วยของ GuitarLab สำหรับตอบคำถามจากคลังความรู้ภายในร้านเท่านั้น
 - ตอบเป็นภาษาไทย สุภาพ กระชับ และตรงคำถาม
 - ใช้เฉพาะบริบทที่ให้มา ถ้าไม่มีข้อมูลเพียงพอให้บอกว่าไม่แน่ใจและขอข้อมูลเพิ่ม
 - ถ้าผู้ใช้ถามเกินคลังความรู้ ให้ตอบอย่างตรงไปตรงมาว่าไม่มีข้อมูลในคลังความรู้นี้
@@ -244,7 +244,7 @@ def generate_answer(
             config=types.GenerateContentConfig(
                 temperature=0.2,
                 system_instruction=(
-                    "You are a Thai RAG chatbot for MilkLab. Answer only from the provided context."
+                    "You are a Thai RAG chatbot for GuitarLab. Answer only from the provided context."
                 ),
             ),
         )
@@ -263,7 +263,7 @@ def init_session_state() -> None:
         st.session_state.messages = [
             {
                 "role": "assistant",
-                "content": "สวัสดีครับ ถามเรื่องเมนู เวลาเปิดร้าน ค่าส่ง หรือ allergen ได้เลย",
+                "content": "สวัสดีครับ มีอะไรให้ GuitarLab ช่วยไหมครับ ถามเรื่องสเปคกีต้าร์ ราคา หรือบริการเซ็ตอัพได้เลย",
             }
         ]
 
@@ -337,8 +337,8 @@ def apply_styles() -> None:
 
 def main() -> int:
     st.set_page_config(
-        page_title="MilkLab RAG Chatbot",
-        page_icon="🥛",
+        page_title="GuitarLab RAG Chatbot",
+        page_icon="🎸",
         layout="wide",
     )
     apply_styles()
@@ -347,8 +347,8 @@ def main() -> int:
     st.markdown(
         """
         <div class="hero">
-            <h1>MilkLab° RAG Chatbot</h1>
-            <p>ถามข้อมูลจากคลังความรู้ร้าน แล้วระบบจะค้นจาก menu_kb.md ก่อนตอบ</p>
+            <h1>GuitarLab RAG Chatbot</h1>
+            <p>ถามข้อมูลจากคลังความรู้ร้าน แล้วระบบจะค้นจาก guitar_kb.md ก่อนตอบ</p>
         </div>
         """,
         unsafe_allow_html=True,
@@ -371,7 +371,7 @@ def main() -> int:
     render_chat_history()
 
     user_query = st.chat_input(
-        "ถามเรื่องเมนู เวลาเปิดร้าน ค่าส่ง หรือ allergen...")
+        "ถามเรื่องกีต้าร์ บริการซ่อม หรือราคา...")
     if not user_query:
         return 0
 
