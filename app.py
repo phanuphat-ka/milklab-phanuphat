@@ -240,18 +240,36 @@ def generate_answer(
     ):
         client = genai.Client(api_key=api_key)
         prompt = build_prompt(query, retrieved_chunks)
-        response = client.models.generate_content(
-            model=model_name,
-            contents=prompt,
-            config=types.GenerateContentConfig(
-                temperature=0.2,
-                system_instruction=(
-                    "You are a Thai RAG chatbot for GuitarLab. Answer only from the provided context."
-                ),
-            ),
-        )
-        answer = (response.text or "").strip()
-        return answer or "ขออภัย ฉันยังตอบคำถามนี้จากคลังความรู้ที่มีไม่ได้"
+        
+        last_error = None
+        tried_models = []
+        models_to_try = [model_name, "gemini-3.5-flash", "gemini-3.0-flash"]
+        
+        for current_model in models_to_try:
+            if not current_model or current_model in tried_models:
+                continue
+            tried_models.append(current_model)
+            
+            try:
+                response = client.models.generate_content(
+                    model=current_model,
+                    contents=prompt,
+                    config=types.GenerateContentConfig(
+                        temperature=0.2,
+                        system_instruction=(
+                            "You are a Thai RAG chatbot for GuitarLab. Answer only from the provided context."
+                        ),
+                    ),
+                )
+                answer = (response.text or "").strip()
+                return answer or "ขออภัย ฉันยังตอบคำถามนี้จากคลังความรู้ที่มีไม่ได้"
+            except Exception as exc:
+                last_error = exc
+                error_text = str(exc)
+                if "503" not in error_text and "UNAVAILABLE" not in error_text and "429" not in error_text and "RESOURCE_EXHAUSTED" not in error_text:
+                    raise
+                    
+        raise last_error or Exception("All fallback models failed")
 
 
 def render_chat_history() -> None:
