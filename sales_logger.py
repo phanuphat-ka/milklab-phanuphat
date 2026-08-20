@@ -1,7 +1,7 @@
-"""MilkLab Sales Logger (S2).
+"""GuitarLab Sales Logger (S2).
 
 Usage:
-    python sales_logger.py --menu "นมหมีฮอกไกโด" --qty 2 --price 65
+    python sales_logger.py --menu "Fender Stratocaster" --qty 1 --price 28500
 
 Reads GOOGLE_SHEETS_CREDENTIALS and TELEGRAM_BOT_TOKEN (or LINE_CHANNEL_TOKEN) from env.
 Appends row [timestamp, menu, qty, price, total] to a Google Sheet,
@@ -108,11 +108,11 @@ def main() -> int:
     # Load .env directly to avoid shell parsing issues with JSON credentials.
     load_dotenv(override=True)
 
-    parser = argparse.ArgumentParser(description="MilkLab Sales Logger")
-    parser.add_argument("--menu", required=True, help="ชื่อเมนู")
-    parser.add_argument("--qty", type=int, required=True, help="จำนวนขวด")
+    parser = argparse.ArgumentParser(description="GuitarLab Sales Logger")
+    parser.add_argument("--menu", required=True, help="ชื่อสินค้า/บริการ")
+    parser.add_argument("--qty", type=int, required=True, help="จำนวน")
     parser.add_argument("--price", type=float,
-                        required=True, help="ราคาต่อขวด")
+                        required=True, help="ราคาต่อหน่วย")
     args = parser.parse_args()
 
     try:
