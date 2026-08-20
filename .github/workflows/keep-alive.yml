@@ -1,0 +1,28 @@
+name: Keep Space Alive
+
+on:
+  schedule:
+    - cron: '0 0 * * *' # รันทุกๆ 24 ชั่วโมง (เวลาเที่ยงคืน UTC)
+  workflow_dispatch: # อนุญาตให้กดรันเองได้จากหน้าเว็บ GitHub
+
+jobs:
+  ping:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Ping HuggingFace Space
+        env:
+          HF_USERNAME: ${{ secrets.HF_USERNAME }}
+          HF_SPACE_NAME: ${{ vars.HF_SPACE_NAME || 'milklab-rag' }}
+        run: |
+          if [ -z "$HF_USERNAME" ]; then
+            echo "HF_USERNAME is not set in secrets. Please set it to enable keep-alive."
+            exit 0
+          fi
+          
+          # ใช้ URL ของหน้า Space หลัก ซึ่งจะส่งสัญญาณให้ HF ปลุก Container
+          SPACE_URL="https://huggingface.co/spaces/${HF_USERNAME}/${HF_SPACE_NAME}"
+          
+          echo "Pinging Space at $SPACE_URL to keep it awake..."
+          curl -I -s -L -m 30 "$SPACE_URL" > /dev/null
+          
+          echo "Ping completed."
